@@ -157,6 +157,46 @@ function aodupechildimport_civicrm_pre($op, $objectName, $id, &$params) {
   }
 }
 
+  function aodupechildimport_civicrm_post($op, $objectName, $objectId, &$objectRef) {
+    if ($objectName == "Relationship" && $op == 'create') {
+      // This is done at the time of creating a new relationship between the child and parent.
+      $childRel = CRM_Core_DAO::getFieldValue('CRM_Contact_DAO_RelationshipType', 'Child of', 'id', 'name_a_b');
+      if ($objectRef->relationship_type_id == $childRel) {
+        _createSharedAddress($objectRef->contact_id_b, $objectRef->contact_id_a);
+      }
+    }
+    if ($objectName == 'Individual' && $op == 'edit'
+      && !empty($objectRef->contact_sub_type) && strpos($objectRef->contact_sub_type, 'Child') !== false) {
+      // This is done if the child exists, and is an update. The method above isn't called for existing relationships.
+      $childRel = CRM_Core_DAO::getFieldValue('CRM_Contact_DAO_RelationshipType', 'Child of', 'id', 'name_a_b');
+      $relationships = civicrm_api3('Relationship', 'get', ['contact_id_a' => $objectId, 'relationship_type_id' => $childRel]);
+      if (!empty($relationships['values'])) {
+        foreach ($relationships['values'] as $relationship) {
+          deleteChildAddresses($relationship['contact_id_a']);
+          createSharedAddress($relationship['contact_id_b'], $relationship['contact_id_a']);
+        }
+      }
+    }
+  }
+
+  function deleteChildAddresses($childId) {
+    $addresses = civicrm_api3('Address', 'get', ['contact_id' => $childId]);
+    if (!empty($addresses['values'])) {
+      foreach ($addresses['values'] as $address) {
+        civicrm_api3('Address', 'delete', ['id' => $address['id']]);
+      }
+    }
+  }
+
+  function createSharedAddress($parentId, $childId) {
+    $addresses = civicrm_api3('Address', 'get', ['contact_id' => $parentId]);
+    if (!empty($addresses['values'])) {
+      foreach ($addresses['values'] as $address) {
+        civicrm_api3('Address', 'create', ['master_id' => $address['id'], 'contact_id' => $childId]);
+      }
+    }
+  }
+
 // --- Functions below this ship commented out. Uncomment as required. ---
 
 /**
