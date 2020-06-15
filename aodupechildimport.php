@@ -162,7 +162,7 @@ function aodupechildimport_civicrm_pre($op, $objectName, $id, &$params) {
       // This is done at the time of creating a new relationship between the child and parent.
       $childRel = CRM_Core_DAO::getFieldValue('CRM_Contact_DAO_RelationshipType', 'Child of', 'id', 'name_a_b');
       if ($objectRef->relationship_type_id == $childRel) {
-        _createSharedAddress($objectRef->contact_id_b, $objectRef->contact_id_a);
+        createSharedAddress($objectRef->contact_id_b, $objectRef->contact_id_a);
       }
     }
     if ($objectName == 'Individual' && $op == 'edit'
